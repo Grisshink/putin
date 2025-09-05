@@ -216,11 +216,11 @@ void serve_socket(void) {
         }
         inp_buf[len] = '\0';
 
-        FILE* f = fdopen(client, "w");
+        FILE* f = fdopen(dup(client), "w");
         char* command = inp_buf;
         while (*command == ' ' || *command == '\n') command++;
         process_commands(command, f);
-        fflush(f);
+        fclose(f);
 
         close(client);
     }
