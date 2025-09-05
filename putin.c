@@ -209,6 +209,10 @@ void serve_socket(void) {
             printf("Cannot read socket: %s\n" SUB("Reading is forbidden by PKN"), strerror(errno));
             break;
         }
+        if (len == 0) {
+            close(client);
+            continue;
+        }
         inp_buf[len] = '\0';
 
         FILE* f = fdopen(client, "w");
