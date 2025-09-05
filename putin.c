@@ -208,6 +208,7 @@ void serve_socket(void) {
         char* command = inp_buf;
         while (*command == ' ' || *command == '\n') command++;
         process_commands(command, f);
+        fflush(f);
 
         close(client);
     }
