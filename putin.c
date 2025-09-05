@@ -48,7 +48,7 @@ void print_status(FILE* f) {
 
     fprintf(f, "[");
 
-    float t;
+    float t = 0.0f;
     ma_sound_get_cursor_in_seconds(&sound, &t);
     print_time(t, f);
 
@@ -69,7 +69,7 @@ void process_commands(char* command, FILE* f) {
         print_status(f);
         return;
     } else if (command[0] == 't') {
-        float cur, len;
+        float cur = 0.0f, len = 0.0f;
         ma_sound_get_cursor_in_seconds(&sound, &cur);
         ma_sound_get_length_in_seconds(&sound, &len);
         fprintf(f, "%.3f\n%.3f\n", cur, len);
@@ -78,7 +78,7 @@ void process_commands(char* command, FILE* f) {
         if (!ma_sound_is_playing(&sound)) ma_sound_start(&sound);
 
         float pos = atof(args);
-        float len;
+        float len = 0.0f;
         ma_sound_get_length_in_seconds(&sound, &len);
         if (pos < 0.0f || pos > len) {
             fprintf(f, "invalid time\n");
