@@ -9,6 +9,13 @@ make
 ./putin <music_file_path>
 ```
 
+## Usage
+
+```
+nc -U putin.sock
+<type_your_commands_here>
+```
+
 ## Commands
 
 ```
