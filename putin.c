@@ -64,6 +64,12 @@ void process_commands(char* command) {
     if (command[0] == 'c') {
         print_status();
         return;
+    } else if (command[0] == 't') {
+        float cur, len;
+        ma_sound_get_cursor_in_seconds(&sound, &cur);
+        ma_sound_get_length_in_seconds(&sound, &len);
+        printf("%.3f\n%.3f\n", cur, len);
+        return;
     } else if (command[0] == 's') {
         if (!ma_sound_is_playing(&sound)) ma_sound_start(&sound);
 
