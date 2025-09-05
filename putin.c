@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <libgen.h>
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
@@ -107,7 +108,7 @@ void process_commands(char* command, FILE* f) {
         ma_sound_set_looping(&sound, loop);
         ma_sound_set_volume(&sound, volume / 100.0f);
         ma_sound_set_pitch(&sound, pitch / 100.0f);
-        strncpy(running_filepath, args, PATH_LEN);
+        strncpy(running_filepath, basename(args), PATH_LEN);
 
         ma_sound_start(&sound);
         print_status(f);
@@ -239,7 +240,7 @@ int main(int argc, char** argv) {
         printf("cant load file %s\n" SUB("Can't even load files in this country"), argv[1]);
     } else {
         ma_sound_start(&sound);
-        strncpy(running_filepath, argv[1], PATH_LEN);
+        strncpy(running_filepath, basename(argv[1]), PATH_LEN);
     }
     
     print_status(stdout);
