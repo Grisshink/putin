@@ -76,7 +76,14 @@ void process_commands(char* command, FILE* f) {
     } else if (command[0] == 's') {
         if (!ma_sound_is_playing(&sound)) ma_sound_start(&sound);
 
-        ma_sound_seek_to_second(&sound, atof(args));
+        float pos = atof(args);
+        float len;
+        ma_sound_get_length_in_seconds(&sound, &len);
+        if (pos < 0.0f || pos > len) {
+            fprintf(f, "invalid time\n");
+            return;
+        }
+        ma_sound_seek_to_second(&sound, pos);
         print_status(f);
         return;
     } else if (command[0] == 'l') {
