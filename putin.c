@@ -96,7 +96,7 @@ void process_commands(char* command) {
         print_status();
 
         return;
-    } else if (command[0] == 'p') {
+    } else if (!strcmp(command, "pitch")) {
         if (args[0] == '\0') {
             printf("pitch %.3f%%\n", pitch);
             return;
@@ -110,6 +110,14 @@ void process_commands(char* command) {
         pitch = p;
         ma_sound_set_pitch(&sound, p / 100.0f);
         printf("pitch %.3f%%\n", p);
+        return;
+    } else if (command[0] == 'p') {
+        if (!ma_sound_is_playing(&sound)) {
+            ma_sound_start(&sound);
+        } else {
+            ma_sound_stop(&sound);
+        }
+        print_status();
         return;
     } else if (command[0] == 'v') {
         if (args[0] == '\0') {
