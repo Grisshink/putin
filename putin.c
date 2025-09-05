@@ -11,6 +11,7 @@
 
 #define ARRLEN(arr) (sizeof(arr)/sizeof(arr[0]))
 #define PATH_LEN 512
+#define SUB(text) "\n\033[90m -- " text "\033[0m\n"
 
 ma_engine audio;
 ma_sound sound;
@@ -91,6 +92,7 @@ void process_commands(char* command) {
 
         if (ma_sound_init_from_file(&audio, args, MA_SOUND_FLAG_STREAM, NULL, NULL, &sound)) {
             printf("cant load file \"%s\"\n", args);
+            print_status();
             return;
         }
         ma_sound_set_looping(&sound, loop);
@@ -154,10 +156,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (ma_engine_init(NULL, &audio)) ball("failed to initialize audio engine.");
+    if (ma_engine_init(NULL, &audio)) ball("failed to initialize audio engine.\n" SUB("I think your audio is dead"));
 
     if (ma_sound_init_from_file(&audio, argv[1], MA_SOUND_FLAG_STREAM, NULL, NULL, &sound)) {
-        printf("cant load file %s\n", argv[1]);
+        printf("cant load file %s\n" SUB("Can't even load files in this country"), argv[1]);
     } else {
         ma_sound_start(&sound);
         strncpy(running_filepath, argv[1], PATH_LEN);
