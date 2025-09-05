@@ -3,8 +3,11 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <libgen.h>
+#include <math.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-#define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
 #define ball(...) do { \

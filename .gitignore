@@ -1,6 +1,7 @@
 music/
 putin
 tags
+*.o
 
 # Vim swap files
 *.swp
