@@ -136,6 +136,11 @@ void process_commands(char* command, FILE* f) {
         fprintf(f, "loop %s\n", loop ? "on" : "off");
         return;
     } else if (!strcmp(command, "play")) {
+        if (args[0] == '\0') {
+            fprintf(f, "usage: play <music_file_path>\n");
+            return;
+        }
+
         ma_sound_uninit(&sound);
         *running_filepath = '\0';
 
