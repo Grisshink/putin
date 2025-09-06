@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "miniaudio.h"
 
@@ -17,7 +18,16 @@
 
 #define ARRLEN(arr) (sizeof(arr)/sizeof(arr[0]))
 #define PATH_LEN 512
+#define TASK_LIST_LEN 512
 #define SUB(text) "\n\033[90m -- " text "\033[0m\n"
+
+typedef int (*TaskFunc)(int fd);
+
+typedef struct {
+    int fd;
+    TaskFunc execute_task;
+    bool delete;
+} Task;
 
 ma_engine audio;
 ma_sound sound;
@@ -27,6 +37,36 @@ bool is_running = true;
 bool loop = false;
 float pitch = 100.0f;
 float volume = 100.0f;
+
+Task task_list[TASK_LIST_LEN];
+int task_list_len = 0;
+
+bool new_task(int fd, TaskFunc task_func) {
+    if (task_list_len >= TASK_LIST_LEN) {
+        printf("Can't create new task: Max task limit reached\n" SUB("WTF"));
+        return false;
+    }
+    task_list[task_list_len++] = (Task) {
+        .fd = fd,
+        .execute_task = task_func,
+        .delete = false,
+    };
+    return true;
+}
+
+Task* get_task(int fd) {
+    for (int i = 0; i < task_list_len; i++) {
+        if (task_list[i].fd != fd) continue;
+        return &task_list[i];
+    }
+    return NULL;
+}
+
+void delete_task(int fd) {
+    Task* t = get_task(fd);
+    if (!t) return;
+    t->delete = true;
+}
 
 char* cut_and_get_next_word(char* inp) {
     if (!*inp) return inp;
@@ -157,11 +197,56 @@ void process_commands(char* command, FILE* f) {
         return;
     } else if (command[0] == 'q') {
         fprintf(f, "Exiting...\n");
+        printf("Exit command received, exiting...\n");
         is_running = false;
         return;
     }
 
     fprintf(f, "invalid command: %s\n", command);
+}
+
+int serve_client(int client) {
+    char inp_buf[256];
+
+    int len = read(client, inp_buf, sizeof(inp_buf) - 1);
+    if (len == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return 1;
+        printf("Cannot read socket: %s\n" SUB("Reading is forbidden by PKN"), strerror(errno));
+        delete_task(client);
+        return 1;
+    }
+    if (len == 0) {
+        delete_task(client);
+        return 1;
+    }
+    inp_buf[len] = '\0';
+
+    FILE* f = fdopen(dup(client), "w");
+    char* command = inp_buf;
+    while (*command == ' ' || *command == '\n') command++;
+    process_commands(command, f);
+    fclose(f);
+
+    return 1;
+}
+
+int accept_connection(int sock) {
+    int client = accept(sock, NULL, NULL);
+    if (client == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return 1;
+        printf("Cannot accept connection: %s\n" SUB("Unacceptable >:("), strerror(errno));
+        return 1;
+    }
+    
+    if (fcntl(client, F_SETFL, O_NONBLOCK) == -1) {
+        printf("Failed to set file descriptor flags: %s\n" SUB("This was a bad idea"), strerror(errno));
+        close(client);
+        return 1;
+    }
+
+    if (!new_task(client, serve_client)) return -1;
+
+    return 0;
 }
 
 void serve_stdin(void) {
@@ -176,7 +261,7 @@ void serve_stdin(void) {
 }
 
 void serve_socket(void) {
-    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    int sock = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sock == -1) {
         printf("Cannot create socket: %s\n" SUB("Your GNU is not unix"), strerror(errno));
         return;
@@ -199,36 +284,41 @@ void serve_socket(void) {
     }
     printf("Listening on socket: %s\n", sock_path);
 
-    char inp_buf[256];
+    new_task(sock, accept_connection);
+
+    fd_set fds;
 
     while (is_running) {
-        int client = accept(sock, NULL, NULL);
-        if (client == -1) {
-            printf("Cannot read connection: %s\n" SUB("Unacceptable >:("), strerror(errno));
+        int max_fd = 0;
+        FD_ZERO(&fds);
+        for (int i = 0; i < task_list_len; i++) {
+            if (task_list[i].fd > max_fd) max_fd = task_list[i].fd;
+            FD_SET(task_list[i].fd, &fds);
+        }
+
+        if (select(max_fd + 1, &fds, NULL, NULL, NULL) == -1) {
+            printf("Failed to select: %s\n", strerror(errno));
             break;
         }
-
-        int len = read(client, inp_buf, sizeof(inp_buf) - 1);
-        if (len == -1) {
-            printf("Cannot read socket: %s\n" SUB("Reading is forbidden by PKN"), strerror(errno));
-            break;
+        
+        for (int i = 0; i < task_list_len; i++) {
+            if (!FD_ISSET(task_list[i].fd, &fds)) continue;
+            int ret;
+            while ((ret = task_list[i].execute_task(task_list[i].fd)) == 0);
+            if (ret == -1) goto loop_end;
         }
-        if (len == 0) {
-            close(client);
-            continue;
+
+        for (int i = task_list_len - 1; i >= 0; i--) {
+            if (!task_list[i].delete) continue;
+            close(task_list[i].fd);
+            memmove(&task_list[i], &task_list[i + 1], (task_list_len - i - 1) * sizeof(Task));
+            task_list_len--;
         }
-        inp_buf[len] = '\0';
-
-        FILE* f = fdopen(dup(client), "w");
-        char* command = inp_buf;
-        while (*command == ' ' || *command == '\n') command++;
-        process_commands(command, f);
-        fclose(f);
-
-        close(client);
     }
+    loop_end:
 
-    close(sock);
+    for (int i = 0; i < task_list_len; i++) close(task_list[i].fd);
+    task_list_len = 0;
 }
 
 int main(int argc, char** argv) {
