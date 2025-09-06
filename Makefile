@@ -1,3 +1,4 @@
+PREFIX := /usr/local
 BUILD_MODE := RELEASE
 LDFLAGS := -lm
 CFLAGS := -Wall -Wextra
@@ -16,7 +17,11 @@ putin.o: putin.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 
 miniaudio.o: miniaudio.h
-	$(CC) $(CFLAGS) -DMINIAUDIO_IMPLEMENTATION -x c -c -o $@ $^
+	$(CC) $(CFLAGS) -Wno-stringop-overflow -DMINIAUDIO_IMPLEMENTATION -x c -c -o $@ $^
+
+install: putin
+	cp -f putin $(PREFIX)/bin
+	chmod 755 $(PREFIX)/bin/putin
 
 clean:
 	rm -f putin $(OBJFILES)

@@ -6,7 +6,7 @@ Minimal music player daemon that rivals mpd. (WIP)
 
 ```
 make
-./putin <music_file_path>
+make install
 ```
 
 ## Usage
