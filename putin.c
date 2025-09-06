@@ -156,7 +156,7 @@ void process_commands(char* command, FILE* f) {
         ma_sound_set_looping(&sound, loop);
         ma_sound_set_volume(&sound, volume / 100.0f);
         ma_sound_set_pitch(&sound, pitch / 100.0f);
-        strncpy(running_filepath, basename(args), PATH_LEN);
+        strncpy(running_filepath, basename(args), PATH_LEN - 1);
 
         ma_sound_start(&sound);
         fprintf(f, "Playing %s\n", running_filepath);
@@ -307,7 +307,7 @@ void run_server(void) {
         return;
     }
 
-    char sock_path[256];
+    char sock_path[108];
 
     char* runtime_dir = getenv("XDG_RUNTIME_DIR");
     char* next = stpncpy(sock_path, runtime_dir ? runtime_dir : ".", sizeof(sock_path));
@@ -382,7 +382,7 @@ int main(int argc, char** argv) {
             printf("cant load file %s\n" SUB("Can't even load files in this country"), argv[1]);
         } else {
             ma_sound_start(&sound);
-            strncpy(running_filepath, basename(argv[1]), PATH_LEN);
+            strncpy(running_filepath, basename(argv[1]), PATH_LEN - 1);
             printf("Playing %s\n", running_filepath);
         }
     }
