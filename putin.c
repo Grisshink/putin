@@ -240,7 +240,7 @@ int accept_connection(int sock) {
     if (client == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) return 1;
         printf("Cannot accept connection: %s\n" SUB("Unacceptable >:("), strerror(errno));
-        return 1;
+        return -1;
     }
     
     if (fcntl(client, F_SETFL, O_NONBLOCK) == -1) {
@@ -254,18 +254,36 @@ int accept_connection(int sock) {
     return 0;
 }
 
-void serve_stdin(void) {
+int serve_stdin(int fd) {
     char inp_buf[256];
 
-    while (is_running) {
-        fgets(inp_buf, ARRLEN(inp_buf), stdin);
-        char* command = inp_buf;
-        while (*command == ' ' || *command == '\n') command++;
-        process_commands(command, stdout);
+    int len = read(fd, inp_buf, sizeof(inp_buf) - 1);
+    if (len == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return 1;
+        printf("Cannot read stdin: %s\n" SUB("Reading is forbidden by PKN"), strerror(errno));
+        delete_task(fd);
+        return 1;
     }
+    if (len == 0) {
+        printf("Got EOF, nuking stdin from this program\n" SUB("You should not have done this..."));
+        delete_task(fd);
+        return 1;
+    }
+    inp_buf[len] = '\0';
+
+    char* command = inp_buf;
+    while (*command == ' ' || *command == '\n') command++;
+    process_commands(command, stdout);
+
+    return 1;
 }
 
-void serve_socket(void) {
+void run_server(void) {
+    if (fcntl(0, F_SETFL, O_NONBLOCK) == -1) {
+        printf("Failed to set file descriptor flags: %s\n" SUB("This was a bad idea"), strerror(errno));
+        return;
+    }
+
     int sock = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sock == -1) {
         printf("Cannot create socket: %s\n" SUB("Your GNU is not unix"), strerror(errno));
@@ -299,6 +317,7 @@ void serve_socket(void) {
     printf("Listening on socket: %s\n", sock_path);
 
     new_task(sock, accept_connection);
+    new_task(0, serve_stdin);
 
     fd_set fds;
 
@@ -351,7 +370,7 @@ int main(int argc, char** argv) {
         }
     }
     
-    serve_socket();
+    run_server();
 
     ma_sound_uninit(&sound);
     ma_engine_uninit(&audio);
