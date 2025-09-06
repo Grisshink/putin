@@ -19,18 +19,18 @@ nc -U putin.sock
 ## Commands
 
 ```
-c                   -- Show current status
-q                   -- Quit
-t                   -- Show raw time and length
-s                   -- (Re)start music
-s <seconds>         -- Seek to specified position
-o <music_file_path> -- Open a different music file
-l                   -- Toggle looping
-p                   -- Toggle pause
-v                   -- Show volume
-v <percent>         -- Set volume
-pitch               -- Show pitch
-pitch <percent>     -- Set pitch
+status                 -- Show current status
+quit                   -- Quit
+time                   -- Show raw time and length
+seek                   -- (Re)start music
+seek <seconds>         -- Seek to specified position
+play <music_file_path> -- Open a different music file
+loop                   -- Toggle looping
+pause                  -- Toggle pause
+volume                 -- Show volume
+volume <percent>       -- Set volume
+pitch                  -- Show pitch
+pitch <percent>        -- Set pitch
 ```
 
 ## Why putin?

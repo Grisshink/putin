@@ -108,16 +108,16 @@ void print_status(FILE* f) {
 void process_commands(char* command, FILE* f) {
     char* args = cut_and_get_next_word(command);
 
-    if (command[0] == 'c') {
+    if (!strcmp(command, "status")) {
         print_status(f);
         return;
-    } else if (command[0] == 't') {
+    } else if (!strcmp(command, "time")) {
         float cur = 0.0f, len = 0.0f;
         ma_sound_get_cursor_in_seconds(&sound, &cur);
         ma_sound_get_length_in_seconds(&sound, &len);
         fprintf(f, "%.3f\n%.3f\n", cur, len);
         return;
-    } else if (command[0] == 's') {
+    } else if (!strcmp(command, "seek")) {
         if (!ma_sound_is_playing(&sound)) ma_sound_start(&sound);
 
         float pos = atof(args);
@@ -130,12 +130,12 @@ void process_commands(char* command, FILE* f) {
         ma_sound_seek_to_second(&sound, pos);
         print_status(f);
         return;
-    } else if (command[0] == 'l') {
+    } else if (!strcmp(command, "loop")) {
         loop = !ma_sound_is_looping(&sound);
         ma_sound_set_looping(&sound, loop);
         fprintf(f, "loop %s\n", loop ? "on" : "off");
         return;
-    } else if (command[0] == 'o') {
+    } else if (!strcmp(command, "play")) {
         ma_sound_uninit(&sound);
         *running_filepath = '\0';
 
@@ -172,7 +172,7 @@ void process_commands(char* command, FILE* f) {
         ma_sound_set_pitch(&sound, p / 100.0f);
         fprintf(f, "pitch %.3f%%\n", p);
         return;
-    } else if (command[0] == 'p') {
+    } else if (!strcmp(command, "pause")) {
         if (!ma_sound_is_playing(&sound)) {
             ma_sound_start(&sound);
         } else {
@@ -180,7 +180,7 @@ void process_commands(char* command, FILE* f) {
         }
         print_status(f);
         return;
-    } else if (command[0] == 'v') {
+    } else if (!strcmp(command, "volume")) {
         if (args[0] == '\0') {
             fprintf(f, "volume %.3f%%\n", volume);
             return;
@@ -195,7 +195,7 @@ void process_commands(char* command, FILE* f) {
         ma_sound_set_volume(&sound, v / 100.0f);
         fprintf(f, "volume %.3f%%\n", v);
         return;
-    } else if (command[0] == 'q') {
+    } else if (!strcmp(command, "quit")) {
         fprintf(f, "Exiting...\n");
         printf("Exit command received, exiting...\n");
         is_running = false;
