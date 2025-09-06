@@ -159,7 +159,7 @@ void process_commands(char* command, FILE* f) {
         strncpy(running_filepath, basename(args), PATH_LEN);
 
         ma_sound_start(&sound);
-        print_status(f);
+        fprintf(f, "Playing %s\n", running_filepath);
 
         return;
     } else if (!strcmp(command, "pitch")) {
@@ -272,7 +272,16 @@ void serve_socket(void) {
         return;
     }
 
-    const char* sock_path = "./putin.sock";
+    char sock_path[256];
+
+    char* runtime_dir = getenv("XDG_RUNTIME_DIR");
+    char* next = stpncpy(sock_path, runtime_dir ? runtime_dir : ".", sizeof(sock_path));
+    if (sizeof(sock_path) - (next - sock_path) < sizeof("/putin.sock")) {
+        printf("Size of environment variable is too large\n");
+        return;
+    }
+    stpncpy(next, "/putin.sock", sizeof(sock_path) - (next - sock_path));
+    
     unlink(sock_path);
 
     struct sockaddr_un addr = {0};
@@ -327,21 +336,21 @@ void serve_socket(void) {
 }
 
 int main(int argc, char** argv) {
-    if (argc == 1) {
-        printf("usage: %s <music_file_path>\n", argv[0]);
+    if (ma_engine_init(NULL, &audio)) {
+        printf("failed to initialize audio engine.\n" SUB("I think your audio is dead"));
         return 1;
     }
 
-    if (ma_engine_init(NULL, &audio)) ball("failed to initialize audio engine.\n" SUB("I think your audio is dead"));
-
-    if (ma_sound_init_from_file(&audio, argv[1], MA_SOUND_FLAG_STREAM, NULL, NULL, &sound)) {
-        printf("cant load file %s\n" SUB("Can't even load files in this country"), argv[1]);
-    } else {
-        ma_sound_start(&sound);
-        strncpy(running_filepath, basename(argv[1]), PATH_LEN);
+    if (argc > 1) {
+        if (ma_sound_init_from_file(&audio, argv[1], MA_SOUND_FLAG_STREAM, NULL, NULL, &sound)) {
+            printf("cant load file %s\n" SUB("Can't even load files in this country"), argv[1]);
+        } else {
+            ma_sound_start(&sound);
+            strncpy(running_filepath, basename(argv[1]), PATH_LEN);
+            printf("Playing %s\n", running_filepath);
+        }
     }
     
-    print_status(stdout);
     serve_socket();
 
     ma_sound_uninit(&sound);
