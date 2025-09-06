@@ -200,6 +200,23 @@ void process_commands(char* command, FILE* f) {
         ma_sound_set_volume(&sound, v / 100.0f);
         fprintf(f, "volume %.3f%%\n", v);
         return;
+    } else if (!strcmp(command, "help")) {
+        fprintf(f,
+            "Usage: <command> [args]\n"
+            "Commands:\n"
+            "    status                 -- Show current status\n"
+            "    quit                   -- Quit\n"
+            "    time                   -- Show raw time and length\n"
+            "    seek                   -- (Re)start music\n"
+            "    seek <seconds>         -- Seek to specified position\n"
+            "    play <music_file_path> -- Open a different music file\n"
+            "    loop                   -- Toggle looping\n"
+            "    pause                  -- Toggle pause\n"
+            "    volume                 -- Show volume\n"
+            "    volume <percent>       -- Set volume\n"
+            "    pitch                  -- Show pitch\n"
+            "    pitch <percent>        -- Set pitch\n");
+        return;
     } else if (!strcmp(command, "quit")) {
         fprintf(f, "Exiting...\n");
         printf("Exit command received, exiting...\n");
