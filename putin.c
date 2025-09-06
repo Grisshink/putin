@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <libgen.h>
 #include <math.h>
@@ -301,6 +302,8 @@ void run_server(void) {
         return;
     }
 
+    umask(0);
+
     int sock = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sock == -1) {
         printf("Cannot create socket: %s\n" SUB("Your GNU is not unix"), strerror(errno));
@@ -310,7 +313,7 @@ void run_server(void) {
     char sock_path[108];
 
     char* runtime_dir = getenv("XDG_RUNTIME_DIR");
-    char* next = stpncpy(sock_path, runtime_dir ? runtime_dir : ".", sizeof(sock_path));
+    char* next = stpncpy(sock_path, runtime_dir ? runtime_dir : "/run", sizeof(sock_path));
     if (sizeof(sock_path) - (next - sock_path) < sizeof("/putin.sock")) {
         printf("Size of environment variable is too large\n");
         return;
@@ -332,6 +335,11 @@ void run_server(void) {
         return;
     }
     printf("Listening on socket: %s\n", sock_path);
+
+    if (fchmod(sock, 777) == -1) {
+        printf("Cannot change permissions: %s\n" SUB("Permission denied"), strerror(errno));
+        return;
+    }
 
     new_task(sock, accept_connection);
     new_task(0, serve_stdin);
