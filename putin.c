@@ -296,10 +296,10 @@ int serve_stdin(int fd) {
     return 1;
 }
 
-void run_server(void) {
+bool run_server(void) {
     if (fcntl(0, F_SETFL, O_NONBLOCK) == -1) {
         printf("Failed to set file descriptor flags: %s\n" SUB("This was a bad idea"), strerror(errno));
-        return;
+        return false;
     }
 
     umask(0);
@@ -307,44 +307,50 @@ void run_server(void) {
     int sock = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sock == -1) {
         printf("Cannot create socket: %s\n" SUB("Your GNU is not unix"), strerror(errno));
-        return;
+        return false;
     }
 
     char sock_path[108];
 
     char* runtime_dir = getenv("XDG_RUNTIME_DIR");
-    char* next = stpncpy(sock_path, runtime_dir ? runtime_dir : "/run", sizeof(sock_path));
+    char* next = stpncpy(sock_path, runtime_dir ? runtime_dir : ".", sizeof(sock_path));
     if (sizeof(sock_path) - (next - sock_path) < sizeof("/putin.sock")) {
         printf("Size of environment variable is too large\n");
-        return;
+        return false;
     }
     stpncpy(next, "/putin.sock", sizeof(sock_path) - (next - sock_path));
     
-    unlink(sock_path);
+    if (unlink(sock_path) == -1) {
+        if (errno != ENOENT) {
+            printf("Cannot remove socket: %s\n", strerror(errno));
+            return false;
+        }
+    }
 
     struct sockaddr_un addr = {0};
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, sock_path, sizeof(addr.sun_path));
     if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
         printf("Cannot bind socket: %s\n" SUB("Not bing - bind!"), strerror(errno));
-        return;
+        return false;
     }
 
     if (listen(sock, 10) == -1) {
         printf("Cannot listen on socket: %s\n" SUB("I can't hear, i'm a DELTARUNE fan!"), strerror(errno));
-        return;
+        return false;
     }
     printf("Listening on socket: %s\n", sock_path);
 
     if (fchmod(sock, 777) == -1) {
         printf("Cannot change permissions: %s\n" SUB("Permission denied"), strerror(errno));
-        return;
+        return false;
     }
 
     new_task(sock, accept_connection);
     new_task(0, serve_stdin);
 
     fd_set fds;
+    bool success = true;
 
     while (is_running) {
         int max_fd = 0;
@@ -363,7 +369,10 @@ void run_server(void) {
             if (!FD_ISSET(task_list[i].fd, &fds)) continue;
             int ret;
             while ((ret = task_list[i].execute_task(task_list[i].fd)) == 0);
-            if (ret == -1) goto loop_end;
+            if (ret == -1) {
+                success = false;
+                goto loop_end;
+            }
         }
 
         for (int i = task_list_len - 1; i >= 0; i--) {
@@ -377,6 +386,8 @@ void run_server(void) {
 
     for (int i = 0; i < task_list_len; i++) close(task_list[i].fd);
     task_list_len = 0;
+
+    return success;
 }
 
 int main(int argc, char** argv) {
@@ -395,9 +406,9 @@ int main(int argc, char** argv) {
         }
     }
     
-    run_server();
+    int return_code = run_server() ? 0 : 1;
 
     ma_sound_uninit(&sound);
     ma_engine_uninit(&audio);
-    return 0;
+    return return_code;
 }
